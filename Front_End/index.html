@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busted! - Fake News Detection</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="header">
+        <h1>Busted!</h1>
+        <p>Catch Fake News Before It Catches You</p>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Input Section -->
+        <div class="input-section">
+            <h2>News Detection Tool</h2>
+            
+            <!-- Text Input -->
+            <div class="form-group">
+                <label for="newsText">📰 Paste News Text:</label>
+                <textarea id="newsText" placeholder="Enter news article or headline here..."></textarea>
+            </div>
+
+            <!-- URL Input -->
+            <div class="form-group">
+                <label for="newsUrl">🔗 Or Enter News URL:</label>
+                <input type="url" id="newsUrl" placeholder="https://example.com/news-article">
+            </div>
+
+            <!-- Buttons -->
+            <div class="buttons">
+                <button id="checkBtn" onclick="checkNews()">Check News</button>
+                <button id="clearBtn" onclick="clearInputs()">Clear</button>
+            </div>
+        </div>
+
+        <!-- Loading Message -->
+        <div id="loading" class="loading hidden">
+            <p>🔄 Analyzing news...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="results hidden">
+            <h3>📊 Results</h3>
+            <div id="resultContent">
+                <!-- Results will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Team Web Scrappers | Project Busted!</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
