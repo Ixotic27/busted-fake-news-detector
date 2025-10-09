@@ -1,18 +1,20 @@
-while True:
-    print("1 -> Enter keywords")
-    print("2 -> Enter link")
-    print("3 -> Exit!")
-    
-    ch = int(input("Enter your choice: "))
-    try: 
-        if(ch==1):
-           query=input("Enter the keywords: ")
-        elif(ch==2):
-           query=input("Enter the link: ")
-        elif(ch==3):
-           print("Exiting...")
-           break
-        else:
-           print("Invalid choice! Please enter 1, 2, or 3.")
-    except ValueError as e:
-       print(f"Error: {e}")
+from busted_ml.ml_pipeline.preprocess import clean_text
+from busted_ml.ml_pipeline.model import load_model
+
+def main():
+    # Load trained model
+    model, vectorizer = load_model()
+
+    # User input
+    news = input("📰 Enter a news headline or article: ")
+
+    # Preprocess + vectorize
+    news_clean = clean_text(news)
+    news_vec = vectorizer.transform([news_clean])
+
+    # Predict
+    prediction = model.predict(news_vec)[0]
+    print(f"\n🔎 Prediction: {prediction}")
+
+if __name__ == "__main__":
+    main()
