@@ -1,61 +1,151 @@
-import os
-import requests
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except Exception:
+    requests = None
+    REQUESTS_AVAILABLE = False
+
 from bs4 import BeautifulSoup
-import pandas as pd
+import csv
+import time
+import urllib.request
 
-def scrape_headlines(url="https://www.bbc.com/news"):
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+}
+
+
+def safe_get(url, headers=None, timeout=10):
     """
-    Fetches the headlines from BBC News (or any site with <h2> tags).
-    Returns a list of strings.
+    Return an object with a .text attribute similar to requests.Response.
+    Tries requests if available, otherwise falls back to urllib.
     """
+    if REQUESTS_AVAILABLE:
+        try:
+            return requests.get(url, headers=headers, timeout=timeout)
+        except Exception:
+            pass
 
-    # Send request (with a browser-like header so site doesn’t block us)
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(url, headers=headers)
+    # urllib fallback
+    req = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = resp.read()
+            # try to get charset from headers
+            charset = None
+            try:
+                info = resp.info()
+                charset = info.get_content_charset()
+            except Exception:
+                charset = None
 
-    # Parse the HTML
+            class Resp:
+                def __init__(self, content, charset):
+                    self._content = content
+                    self._charset = charset
+
+                @property
+                def text(self):
+                    enc = self._charset or "utf-8"
+                    try:
+                        return self._content.decode(enc, errors="replace")
+                    except Exception:
+                        return self._content.decode("utf-8", errors="replace")
+
+            return Resp(data, charset)
+    except Exception:
+        class EmptyResp:
+            text = ""
+        return EmptyResp()
+
+# Function to scrape NDTV
+def scrape_ndtv():
+    url = "https://www.ndtv.com/latest"
+    response = safe_get(url, headers=HEADERS)
     soup = BeautifulSoup(response.text, "html.parser")
-   
-    # Find all <h2> tags and get text
+    articles = []
+    for item in soup.find_all("div", class_="news_Itm-cont"):
+        title_tag = item.find("h2", class_="newsHdng")
+        if not title_tag:
+            continue
+        title = title_tag.text.strip()
+        link = title_tag.find("a")["href"]
 
-    articles=soup.find_all('a',href=True)
-    results=[]
+        try:
+            article_page = safe_get(link, headers=HEADERS)
+            article_soup = BeautifulSoup(article_page.text, "html.parser")
+            content = " ".join([p.text for p in article_soup.find_all("p")])
+        except:
+            content = "N/A"
 
-    for a in articles:
-        title = a.get_text(strip=True)
-        link = a['href']
+        articles.append({"source": "NDTV", "title": title, "link": link, "content": content})
+        time.sleep(1)
+    return articles
 
-        if title and "/news" in link:  # catch both relative and absolute
-            if link.startswith("http"):
-                full_link = link
-            else:
-                full_link = f"https://www.bbc.com{link}"
-            results.append((title, full_link))
+# Function to scrape Times of India
+def scrape_toi():
+    url = "https://timesofindia.indiatimes.com/briefs"
+    response = safe_get(url, headers=HEADERS)
+    soup = BeautifulSoup(response.text, "html.parser")
+    articles = []
+    for item in soup.find_all("div", class_="brief_box"):
+        title_tag = item.find("h2")
+        if not title_tag:
+            continue
+        title = title_tag.text.strip()
+        link_tag = title_tag.find("a")
+        link = "https://timesofindia.indiatimes.com" + link_tag["href"] if link_tag else "N/A"
 
-    # Return
-    return results
+        try:
+            article_page = safe_get(link, headers=HEADERS)
+            article_soup = BeautifulSoup(article_page.text, "html.parser")
+            content = " ".join([p.text for p in article_soup.find_all("p")])
+        except:
+            content = "N/A"
 
+        articles.append({"source": "Times of India", "title": title, "link": link, "content": content})
+        time.sleep(1)
+    return articles
 
-if __name__ == "__main__":
-    results = scrape_headlines()
-    print("Top Headlines:")
-    for i, (title, link) in enumerate(results, 1):
-        print(f"{i}. {title} -> {link}")
+# Function to scrape Hindustan Times
+def scrape_ht():
+    url = "https://www.hindustantimes.com/latest-news"
+    response = safe_get(url, headers=HEADERS)
+    soup = BeautifulSoup(response.text, "html.parser")
+    articles = []
+    for item in soup.find_all("div", class_="storyCard"):
+        title_tag = item.find("h3")
+        if not title_tag:
+            continue
+        title = title_tag.text.strip()
+        link_tag = title_tag.find("a")
+        link = link_tag["href"] if link_tag else "N/A"
 
+        try:
+            article_page = safe_get(link, headers=HEADERS)
+            article_soup = BeautifulSoup(article_page.text, "html.parser")
+            content = " ".join([p.text for p in article_soup.find_all("p")])
+        except:
+            content = "N/A"
 
-df = pd.DataFrame(results, columns=["Headline", "Link"])
+        articles.append({"source": "Hindustan Times", "title": title, "link": link, "content": content})
+        time.sleep(1)
+    return articles
 
-if os.path.exists("headlines.csv") and os.path.getsize("headlines.csv") > 0:
-    old_df=pd.read_csv("headlines.csv")
-    combined_df = pd.concat([old_df, df]).drop_duplicates().reset_index(drop=True)
-else:
-    combined_df=df
-combined_df.to_csv("headlines.csv",index=False)
+# Main scraping
+all_articles = []
+all_articles.extend(scrape_ndtv())
+all_articles.extend(scrape_toi())
+all_articles.extend(scrape_ht())
 
+# Save to CSV
+keys = ["source", "title", "link", "content"]
+with open("data/news_articles.csv", "w", newline="", encoding="utf-8") as f:
+    dict_writer = csv.DictWriter(f, fieldnames=keys)
+    dict_writer.writeheader()
+    dict_writer.writerows(all_articles)
 
-
-
-
+print(f"✅ Scraped {len(all_articles)} articles. Saved to data/news_articles.csv")
 
 
 
