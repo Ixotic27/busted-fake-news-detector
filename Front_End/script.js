@@ -30,32 +30,7 @@ function checkNews() {
         showDummyResult();
     }, 2000);
     
-    /* 
-    ===========================================
-    FLASK INTEGRATION - UNCOMMENT WHEN READY:
-    ===========================================
     
-    fetch('/predict', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            text: textInput,
-            url: urlInput
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        hideLoading();
-        showResult(data);
-    })
-    .catch(error => {
-        hideLoading();
-        showError('Error: Could not analyze news');
-        console.error('Error:', error);
-    });
-    */
 }
 
 // Clear all inputs
