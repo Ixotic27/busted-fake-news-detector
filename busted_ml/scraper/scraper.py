@@ -9,153 +9,112 @@ from bs4 import BeautifulSoup
 import csv
 import time
 import urllib.request
+import os
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
-
 def safe_get(url, headers=None, timeout=10):
-    """
-    Return an object with a .text attribute similar to requests.Response.
-    Tries requests if available, otherwise falls back to urllib.
-    """
+    """Get webpage content - tries requests, falls back to urllib"""
     if REQUESTS_AVAILABLE:
         try:
             return requests.get(url, headers=headers, timeout=timeout)
         except Exception:
             pass
-
-    # urllib fallback
+    
     req = urllib.request.Request(url, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = resp.read()
-            # try to get charset from headers
             charset = None
             try:
-                info = resp.info()
-                charset = info.get_content_charset()
-            except Exception:
-                charset = None
-
+                charset = resp.info().get_content_charset()
+            except:
+                pass
+            
             class Resp:
-                def __init__(self, content, charset):
-                    self._content = content
-                    self._charset = charset
-
+                def __init__(self, content, enc):
+                    self.txt = content.decode(enc or "utf-8", errors="replace")
                 @property
                 def text(self):
-                    enc = self._charset or "utf-8"
-                    try:
-                        return self._content.decode(enc, errors="replace")
-                    except Exception:
-                        return self._content.decode("utf-8", errors="replace")
-
+                    return self.txt
+            
             return Resp(data, charset)
-    except Exception:
+    except:
         class EmptyResp:
             text = ""
         return EmptyResp()
 
-# Function to scrape NDTV
-def scrape_ndtv():
-    url = "https://www.ndtv.com/latest"
-    response = safe_get(url, headers=HEADERS)
-    soup = BeautifulSoup(response.text, "html.parser")
+def scrape_article(url, src_name):
+    """Scrape single article from URL"""
+    try:
+        resp = safe_get(url, headers=HEADERS)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        
+        # Get title
+        title = ""
+        for tag in ["h1", "h2", "title"]:
+            t = soup.find(tag)
+            if t:
+                title = t.text.strip()
+                break
+        
+        # Get content from all paragraphs
+        paragraphs = soup.find_all("p")
+        content = " ".join([p.text.strip() for p in paragraphs if p.text.strip()])
+        
+        return {
+            "source": src_name,
+            "title": title or "N/A",
+            "link": url,
+            "content": content or "N/A"
+        }
+    except Exception as e:
+        return {
+            "source": src_name,
+            "title": "ERROR",
+            "link": url,
+            "content": f"Failed to scrape: {str(e)}"
+        }
+
+def scrape_from_csv(input_csv, output_csv):
+    """
+    Read URLs from CSV and scrape them.
+    Input CSV should have columns: source, url
+    """
     articles = []
-    for item in soup.find_all("div", class_="news_Itm-cont"):
-        title_tag = item.find("h2", class_="newsHdng")
-        if not title_tag:
+    
+    # Read input CSV
+    with open(input_csv, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        urls = list(reader)
+    
+    print(f"📰 Found {len(urls)} URLs to scrape...")
+    
+    # Scrape each URL
+    for i, row in enumerate(urls, 1):
+        src = row.get("source", "Unknown")
+        url = row.get("url", "").strip()
+        
+        if not url:
             continue
-        title = title_tag.text.strip()
-        link = title_tag.find("a")["href"]
-
-        try:
-            article_page = safe_get(link, headers=HEADERS)
-            article_soup = BeautifulSoup(article_page.text, "html.parser")
-            content = " ".join([p.text for p in article_soup.find_all("p")])
-        except:
-            content = "N/A"
-
-        articles.append({"source": "NDTV", "title": title, "link": link, "content": content})
-        time.sleep(1)
+        
+        print(f"[{i}/{len(urls)}] Scraping {src}...")
+        article = scrape_article(url, src)
+        articles.append(article)
+        time.sleep(1)  # Be polite to servers
+    
+    # Save to output CSV
+    os.makedirs(os.path.dirname(output_csv) or ".", exist_ok=True)
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["source", "title", "link", "content"])
+        writer.writeheader()
+        writer.writerows(articles)
+    
+    print(f"✅ Scraped {len(articles)} articles → {output_csv}")
     return articles
 
-# Function to scrape Times of India
-def scrape_toi():
-    url = "https://timesofindia.indiatimes.com/briefs"
-    response = safe_get(url, headers=HEADERS)
-    soup = BeautifulSoup(response.text, "html.parser")
-    articles = []
-    for item in soup.find_all("div", class_="brief_box"):
-        title_tag = item.find("h2")
-        if not title_tag:
-            continue
-        title = title_tag.text.strip()
-        link_tag = title_tag.find("a")
-        link = "https://timesofindia.indiatimes.com" + link_tag["href"] if link_tag else "N/A"
-
-        try:
-            article_page = safe_get(link, headers=HEADERS)
-            article_soup = BeautifulSoup(article_page.text, "html.parser")
-            content = " ".join([p.text for p in article_soup.find_all("p")])
-        except:
-            content = "N/A"
-
-        articles.append({"source": "Times of India", "title": title, "link": link, "content": content})
-        time.sleep(1)
-    return articles
-
-# Function to scrape Hindustan Times
-def scrape_ht():
-    url = "https://www.hindustantimes.com/latest-news"
-    response = safe_get(url, headers=HEADERS)
-    soup = BeautifulSoup(response.text, "html.parser")
-    articles = []
-    for item in soup.find_all("div", class_="storyCard"):
-        title_tag = item.find("h3")
-        if not title_tag:
-            continue
-        title = title_tag.text.strip()
-        link_tag = title_tag.find("a")
-        link = link_tag["href"] if link_tag else "N/A"
-
-        try:
-            article_page = safe_get(link, headers=HEADERS)
-            article_soup = BeautifulSoup(article_page.text, "html.parser")
-            content = " ".join([p.text for p in article_soup.find_all("p")])
-        except:
-            content = "N/A"
-
-        articles.append({"source": "Hindustan Times", "title": title, "link": link, "content": content})
-        time.sleep(1)
-    return articles
-
-# Main scraping
-all_articles = []
-all_articles.extend(scrape_ndtv())
-all_articles.extend(scrape_toi())
-all_articles.extend(scrape_ht())
-
-# Save to CSV
-keys = ["source", "title", "link", "content"]
-with open("data/news_articles.csv", "w", newline="", encoding="utf-8") as f:
-    dict_writer = csv.DictWriter(f, fieldnames=keys)
-    dict_writer.writeheader()
-    dict_writer.writerows(all_articles)
-
-print(f"✅ Scraped {len(all_articles)} articles. Saved to data/news_articles.csv")
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Run if executed directly
+if __name__ == "__main__":
+    scrape_from_csv("data/news_urls.csv", "data/news_articles.csv")

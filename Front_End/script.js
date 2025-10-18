@@ -2,35 +2,74 @@
 const newsText = document.getElementById('newsText');
 const newsUrl = document.getElementById('newsUrl');
 const loading = document.getElementById('loading');
+const loadingStage = document.getElementById('loadingStage');
 const results = document.getElementById('results');
 const resultContent = document.getElementById('resultContent');
 
+// API endpoint
+const API_URL = 'http://localhost:5000/predict';
+
 // Main function to check news
-function checkNews() {
+async function checkNews() {
     console.log('Checking news...');
     
     // Get user input
-    const textInput = newsText.value.trim();
-    const urlInput = newsUrl.value.trim();
+    const text = newsText.value.trim();
+    const url = newsUrl.value.trim();
     
     // Check if user entered something
-    if (!textInput && !urlInput) {
+    if (!text && !url) {
         alert('Please enter news text or URL');
         return;
     }
     
-    // Show loading
+    // Validate input
+    if (!validateInput(text, url)) {
+        return;
+    }
+    
+    // Show loading with stage updates
     showLoading();
     hideResults();
+    updateLoadingStage('Stage 1: Running ML analysis...');
     
-    // For now, show dummy result after 2 seconds
-    // TODO: Replace with Flask API call
+    // Simulate stage progression
     setTimeout(() => {
+        updateLoadingStage('Stage 2: Verifying on trusted sources...');
+    }, 1000);
+    
+    try {
+        // Call Flask API
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text, url })
+        });
+        
+        const data = await response.json();
+        
         hideLoading();
-        showDummyResult();
-    }, 2000);
-    
-    
+        
+        if (response.ok) {
+            showResult(data);
+        } else {
+            showError(data.error || 'Something went wrong');
+        }
+        
+    } catch (error) {
+        hideLoading();
+        showError('Cannot connect to backend. Make sure Flask is running!');
+        console.error('Error:', error);
+    }
+}
+
+// Update loading stage message
+function updateLoadingStage(msg) {
+    if (loadingStage) {
+        loadingStage.textContent = msg;
+    }
 }
 
 // Clear all inputs
@@ -52,6 +91,9 @@ function showLoading() {
 function hideLoading() {
     loading.classList.add('hidden');
     loading.classList.remove('show');
+    if (loadingStage) {
+        loadingStage.textContent = '';
+    }
 }
 
 // Show results section
@@ -66,72 +108,75 @@ function hideResults() {
     results.classList.remove('show');
 }
 
-// Show dummy result (remove when Flask is ready)
-function showDummyResult() {
-    resultContent.innerHTML = `
-        <div class="error">
-            <h4>⚠️ Backend Not Connected</h4>
-            <p>Flask integration coming soon!</p>
-            <p>Team Web Scrappers is working on it.</p>
-        </div>
-        <br>
-        <div class="success">
-            <h4>📊 Sample Result:</h4>
-            <p><strong>Classification:</strong> REAL NEWS</p>
-            <p><strong>Confidence:</strong> 85%</p>
-        </div>
-    `;
-    showResults();
-}
-
 // Show real result from Flask
-// TODO: Use this function when Flask backend is ready
 function showResult(data) {
-    const prediction = data.prediction; // "FAKE" or "REAL"
-    const confidence = Math.round(data.confidence * 100); // Convert to percentage
+    const pred = data.prediction;
+    const conf = Math.round(data.confidence * 100);
+    const stage = data.stage || '';
+    const reason = data.reason || '';
+    const ml = data.ml_says || '';
+    const sources = data.sources || [];
+    const links = data.links || [];
     
-    const isReal = prediction === 'REAL';
-    const cssClass = isReal ? 'success' : 'error';
-    const emoji = isReal ? '✅' : '❌';
+    let cssClass, emoji;
+    if (pred.includes('REAL')) {
+        cssClass = 'success';
+        emoji = '✅';
+    } else if (pred.includes('LIKELY') || pred.includes('UNVERIFIED')) {
+        cssClass = 'warning';
+        emoji = '⚠️';
+    } else {
+        cssClass = 'error';
+        emoji = '❌';
+    }
     
-    resultContent.innerHTML = `
+    let html = `
         <div class="${cssClass}">
-            <h4>${emoji} ${prediction} NEWS</h4>
-            <p><strong>Confidence:</strong> ${confidence}%</p>
-        </div>
+            <h4>${emoji} ${pred}</h4>
+            <p><strong>Confidence:</strong> ${conf}%</p>
+            <p><strong>Stage:</strong> ${stage}</p>
+            <p><strong>Analysis:</strong> ${reason}</p>
+            <p><strong>ML Model Says:</strong> ${ml.toUpperCase()}</p>
     `;
     
+    // Show sources if found
+    if (sources.length > 0) {
+        html += '<hr><p><strong>✅ Verified on:</strong></p><ul>';
+        sources.forEach(src => {
+            html += `<li>${src}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    // Show links if found
+    if (links.length > 0) {
+        html += '<p><strong>🔗 Source Links:</strong></p><ul>';
+        links.forEach(link => {
+            html += `<li><a href="${link}" target="_blank">${link.substring(0, 60)}...</a></li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (sources.length === 0) {
+        html += '<hr><p><em>❌ No verification found on trusted sources</em></p>';
+    }
+    
+    html += '</div>';
+    
+    resultContent.innerHTML = html;
     showResults();
 }
 
 // Show error message
-function showError(message) {
+function showError(msg) {
     resultContent.innerHTML = `
         <div class="error">
             <h4>❌ Error</h4>
-            <p>${message}</p>
+            <p>${msg}</p>
         </div>
     `;
     showResults();
 }
-
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    // Press Enter in URL field to check news
-    if (e.target === newsUrl && e.key === 'Enter') {
-        checkNews();
-    }
-    
-    // Press Ctrl+Enter in text area to check news
-    if (e.target === newsText && e.ctrlKey && e.key === 'Enter') {
-        checkNews();
-    }
-    
-    // Press Escape to clear
-    if (e.key === 'Escape') {
-        clearInputs();
-    }
-});
 
 // Simple input validation
 function validateInput(text, url) {
@@ -148,11 +193,22 @@ function validateInput(text, url) {
     return true;
 }
 
-// Welcome message for developers
-console.log('🚀 Busted! Fake News Detector');
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.target === newsUrl && e.key === 'Enter') {
+        checkNews();
+    }
+    
+    if (e.target === newsText && e.ctrlKey && e.key === 'Enter') {
+        checkNews();
+    }
+    
+    if (e.key === 'Escape') {
+        clearInputs();
+    }
+});
+
+// Welcome message
+console.log('🚀 Busted! Fake News Detector - CONNECTED');
 console.log('👥 Team: Web Scrappers');
-console.log('🔧 Ready for Flask integration!');
-console.log('📝 To connect Flask:');
-console.log('   1. Uncomment the fetch code in checkNews()');
-console.log('   2. Set up /predict endpoint in Flask');
-console.log('   3. Return {prediction: "FAKE/REAL", confidence: 0.85}');
+console.log('✅ Flask backend ready!');
