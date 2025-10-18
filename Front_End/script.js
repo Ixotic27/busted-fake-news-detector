@@ -1,4 +1,4 @@
-// Get HTML elements
+// ========== GET HTML ELEMENTS ==========
 const newsText = document.getElementById('newsText');
 const newsUrl = document.getElementById('newsUrl');
 const loading = document.getElementById('loading');
@@ -9,7 +9,9 @@ const resultContent = document.getElementById('resultContent');
 // API endpoint
 const API_URL = 'http://localhost:5000/predict';
 
-// Main function to check news
+
+// ========== MAIN CHECK FUNCTION ==========
+
 async function checkNews() {
     console.log('Checking news...');
     
@@ -17,41 +19,39 @@ async function checkNews() {
     const text = newsText.value.trim();
     const url = newsUrl.value.trim();
     
-    // Check if user entered something
+    // Validate input exists
     if (!text && !url) {
         alert('Please enter news text or URL');
         return;
     }
     
-    // Validate input
+    // Validate format
     if (!validateInput(text, url)) {
         return;
     }
     
-    // Show loading with stage updates
+    // Show loading animation
     showLoading();
     hideResults();
-    updateLoadingStage('Stage 1: Running ML analysis...');
+    updateLoadingStage('Stage 1: ML Analysis...');
     
-    // Simulate stage progression
+    // Update stage after 1 second
     setTimeout(() => {
-        updateLoadingStage('Stage 2: Verifying on trusted sources...');
+        updateLoadingStage('Stage 2: Web Verification...');
     }, 1000);
     
     try {
-        // Call Flask API
+        // Call backend API
         const response = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ text, url })
         });
         
         const data = await response.json();
-        
         hideLoading();
         
+        // Show result or error
         if (response.ok) {
             showResult(data);
         } else {
@@ -65,64 +65,27 @@ async function checkNews() {
     }
 }
 
-// Update loading stage message
-function updateLoadingStage(msg) {
-    if (loadingStage) {
-        loadingStage.textContent = msg;
-    }
-}
 
-// Clear all inputs
-function clearInputs() {
-    newsText.value = '';
-    newsUrl.value = '';
-    hideResults();
-    hideLoading();
-    newsText.focus();
-}
+// ========== DISPLAY FUNCTIONS ==========
 
-// Show loading message
-function showLoading() {
-    loading.classList.remove('hidden');
-    loading.classList.add('show');
-}
-
-// Hide loading message
-function hideLoading() {
-    loading.classList.add('hidden');
-    loading.classList.remove('show');
-    if (loadingStage) {
-        loadingStage.textContent = '';
-    }
-}
-
-// Show results section
-function showResults() {
-    results.classList.remove('hidden');
-    results.classList.add('show');
-}
-
-// Hide results section
-function hideResults() {
-    results.classList.add('hidden');
-    results.classList.remove('show');
-}
-
-// Show real result from Flask
 function showResult(data) {
+    /**
+     * Display prediction results
+     * Shows: prediction, confidence, verified sources with similarity scores
+     */
     const pred = data.prediction;
     const conf = Math.round(data.confidence * 100);
     const stage = data.stage || '';
     const reason = data.reason || '';
     const ml = data.ml_says || '';
-    const sources = data.sources || [];
-    const links = data.links || [];
+    const verified = data.verified_sources || [];
     
+    // Choose color and emoji based on prediction
     let cssClass, emoji;
     if (pred.includes('REAL')) {
         cssClass = 'success';
         emoji = '✅';
-    } else if (pred.includes('LIKELY') || pred.includes('UNVERIFIED')) {
+    } else if (pred.includes('UNVERIFIED') || pred.includes('LIKELY')) {
         cssClass = 'warning';
         emoji = '⚠️';
     } else {
@@ -130,6 +93,7 @@ function showResult(data) {
         emoji = '❌';
     }
     
+    // Build result HTML
     let html = `
         <div class="${cssClass}">
             <h4>${emoji} ${pred}</h4>
@@ -139,26 +103,31 @@ function showResult(data) {
             <p><strong>ML Model Says:</strong> ${ml.toUpperCase()}</p>
     `;
     
-    // Show sources if found
-    if (sources.length > 0) {
-        html += '<hr><p><strong>✅ Verified on:</strong></p><ul>';
-        sources.forEach(src => {
-            html += `<li>${src}</li>`;
+    // Show verified sources with article links and similarity
+    if (verified.length > 0) {
+        html += '<hr><p><strong>✅ Verified Sources:</strong></p>';
+        html += '<ul class="verified-list">';
+        
+        verified.forEach(v => {
+            const sourceName = v.source.replace('www.', '');
+            const similarity = v.similarity ? Math.round(v.similarity * 100) + '% match' : '';
+            
+            html += `
+                <li>
+                    <div class="source-info">
+                        <strong>${sourceName}</strong>
+                        ${similarity ? `<span class="similarity">${similarity}</span>` : ''}
+                    </div>
+                    <a href="${v.link}" target="_blank" class="source-link">
+                        📰 View Article
+                    </a>
+                </li>
+            `;
         });
+        
         html += '</ul>';
-    }
-    
-    // Show links if found
-    if (links.length > 0) {
-        html += '<p><strong>🔗 Source Links:</strong></p><ul>';
-        links.forEach(link => {
-            html += `<li><a href="${link}" target="_blank">${link.substring(0, 60)}...</a></li>`;
-        });
-        html += '</ul>';
-    }
-    
-    if (sources.length === 0) {
-        html += '<hr><p><em>❌ No verification found on trusted sources</em></p>';
+    } else {
+        html += '<hr><p><em>❌ No verified sources found</em></p>';
     }
     
     html += '</div>';
@@ -167,8 +136,10 @@ function showResult(data) {
     showResults();
 }
 
-// Show error message
 function showError(msg) {
+    /**
+     * Display error message
+     */
     resultContent.innerHTML = `
         <div class="error">
             <h4>❌ Error</h4>
@@ -178,8 +149,55 @@ function showError(msg) {
     showResults();
 }
 
-// Simple input validation
+
+// ========== UI CONTROLS ==========
+
+function showLoading() {
+    loading.classList.remove('hidden');
+    loading.classList.add('show');
+}
+
+function hideLoading() {
+    loading.classList.add('hidden');
+    loading.classList.remove('show');
+    if (loadingStage) {
+        loadingStage.textContent = '';
+    }
+}
+
+function showResults() {
+    results.classList.remove('hidden');
+    results.classList.add('show');
+}
+
+function hideResults() {
+    results.classList.add('hidden');
+    results.classList.remove('show');
+}
+
+function updateLoadingStage(msg) {
+    if (loadingStage) {
+        loadingStage.textContent = msg;
+    }
+}
+
+function clearInputs() {
+    newsText.value = '';
+    newsUrl.value = '';
+    hideResults();
+    hideLoading();
+    newsText.focus();
+}
+
+
+// ========== VALIDATION ==========
+
 function validateInput(text, url) {
+    /**
+     * Check if user input is valid
+     * URL must start with http/https
+     * Text must be at least 10 characters
+     */
     if (url && !url.startsWith('http')) {
         alert('URL must start with http:// or https://');
         return false;
@@ -193,22 +211,29 @@ function validateInput(text, url) {
     return true;
 }
 
-// Keyboard shortcuts
+
+// ========== KEYBOARD SHORTCUTS ==========
+
 document.addEventListener('keydown', function(e) {
+    // Enter on URL field = check news
     if (e.target === newsUrl && e.key === 'Enter') {
         checkNews();
     }
     
+    // Ctrl+Enter on text area = check news
     if (e.target === newsText && e.ctrlKey && e.key === 'Enter') {
         checkNews();
     }
     
+    // Escape = clear all
     if (e.key === 'Escape') {
         clearInputs();
     }
 });
 
-// Welcome message
-console.log('🚀 Busted! Fake News Detector - CONNECTED');
+
+// ========== STARTUP MESSAGE ==========
+
+console.log('🚀 Busted! Fake News Detector');
 console.log('👥 Team: Web Scrappers');
-console.log('✅ Flask backend ready!');
+console.log('✅ Ready to detect fake news!');

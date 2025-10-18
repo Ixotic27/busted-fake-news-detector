@@ -1,9 +1,34 @@
 source,url
-NDTV,https://www.ndtv.com/india-news/india-news-latest-news-headlines-live-october-17-2024-6773028
-Times of India,https://timesofindia.indiatimes.com/india/indias-gdp-growth-hits-7-8-in-q1-fastest-among-major-economies/articleshow/103456789.cms
-Hindustan Times,https://www.hindustantimes.com/india-news/parliament-session-begins-today-key-bills-on-agenda-101697523456789.html
-The Hindu,https://www.thehindu.com/news/national/supreme-court-ruling-on-electoral-bonds/article67456789.ece
-Indian Express,https://indianexpress.com/article/india/monsoon-rainfall-above-normal-imd-forecasts-8956789/
-BBC India,https://www.bbc.com/news/world-asia-india-67123456
-Reuters India,https://www.reuters.com/world/india/india-economy-grows-faster-than-expected-2024-10-17/
-Al Jazeera,https://www.aljazeera.com/news/2024/10/17/india-announces-new-climate-policy
+BBC News,https://www.bbc.com/news
+BBC Israel-Gaza,https://www.bbc.com/news/topics/c2vdnvdg6xxt
+BBC Ukraine,https://www.bbc.com/news/war-in-ukraine
+BBC US & Canada,https://www.bbc.com/news/us-canada
+BBC UK,https://www.bbc.com/news/uk
+BBC Africa,https://www.bbc.com/news/world/africa
+BBC Asia,https://www.bbc.com/news/world/asia
+BBC India,https://www.bbc.com/news/world/asia/india
+BBC Australia,https://www.bbc.com/news/world/australia
+BBC Europe,https://www.bbc.com/news/world/europe
+BBC Middle East,https://www.bbc.com/news/world/middle_east
+BBC Live News,https://www.bbc.com/live/news
+BBC Politics,https://www.bbc.com/news/politics
+BBC England,https://www.bbc.com/news/england
+BBC Scotland,https://www.bbc.com/news/scotland
+BBC Wales,https://www.bbc.com/news/wales
+NDTV Latest,https://www.ndtv.com/latest
+NDTV India,https://www.ndtv.com/india
+NDTV World,https://www.ndtv.com/world-news
+TOI Latest,https://timesofindia.indiatimes.com/briefs
+TOI India,https://timesofindia.indiatimes.com/india
+TOI World,https://timesofindia.indiatimes.com/world
+Hindu Latest,https://www.thehindu.com/news/
+Hindu National,https://www.thehindu.com/news/national/
+Hindu India,https://www.thehindu.com/news/national/
+HT Latest,https://www.hindustantimes.com/latest-news
+HT India,https://www.hindustantimes.com/india-news
+HT World,https://www.hindustantimes.com/world-news
+IE India,https://indianexpress.com/section/india/
+IE Latest,https://indianexpress.com/latest-news/
+IE World,https://indianexpress.com/section/world/
+Reuters India,https://www.reuters.com/world/india/
+Reuters World,https://www.reuters.com/world/
