@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from busted_ml.ml_pipeline.two_stage_checker import check_news
-from busted_ml.scraper.scraper import scrape_article
 
 app = Flask(__name__)
 CORS(app)
@@ -24,20 +23,11 @@ def predict():
         if not text and not url:
             return jsonify({'error': 'No input provided'}), 400
         
-        # Get content
-        content = text
-        input_url = None
+        # Use text or URL for checking
+        content = text if text else url
+        input_url = url if url else None
         
-        if url:
-            input_url = url
-            # Try to scrape if URL provided
-            try:
-                article = scrape_article(url, "User")
-                content = article['title'] + " " + article['content']
-            except:
-                content = text if text else "Unable to fetch content"
-        
-        # Check news with NewsAPI
+        # Check news with Google News
         result = check_news(content, input_url)
         
         return jsonify(result)
