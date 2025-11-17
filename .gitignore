@@ -3,4 +3,3 @@ __pycache__/
 *.pyc
 .env
 busted_ml/data/*.csv
-busted_ml/models/*.pkl
