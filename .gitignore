@@ -2,3 +2,16 @@
 __pycache__/
 *.pyc
 .env
+# ML models + data
+busted_ml/models/
+busted_ml/data/
+*.pkl
+*.csv
+*.bin
+*.h5
+*.model
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
